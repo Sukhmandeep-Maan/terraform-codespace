@@ -2,6 +2,10 @@ provider "aws" {
     region = "ap-south-1"  
 }
 
+resource "aws_key_pair" "my_key" {
+  key_name   = "codespaces-key"
+  public_key = file("~/.ssh/id_ed25519.pub") # replace with the path to your public key
+}
 variable "cidr_block" {
   description = "The CIDR block for the VPC"
   type        = string
@@ -76,14 +80,14 @@ resource "aws_instance" "ec2_instance" {
   ami           = "ami-006f82a1d5a27da54" # replace this with a valid AMI ID
   instance_type = "t3.micro"
   subnet_id     = aws_subnet.subnet.id
-  security_groups = [aws_security_group.sg.name]
+  vpc_security_group_ids = [aws_security_group.sg.id]
+  key_name     = aws_key_pair.my_key.key_name
   connection {
     type        = "ssh"
-    user        = "EC2 Instance"
-    private_key = file("~/.ssh/id_rsa") # replace with your private key path    
+    user        = "ubuntu"
+    private_key = file("~/.ssh/id_ed25519") # replace with the path to your private key
     host        = self.public_ip
   }
-
   provisioner "file" {
     source      = "app.py"
     destination = "/home/ubuntu/app.py"
@@ -94,7 +98,7 @@ resource "aws_instance" "ec2_instance" {
       "sudo apt-get update -y",
       "sudo apt-get install -y python3-pip",
       "cd /home/ubuntu",
-      "sudo pip3 install flask",
+      "sudo apt-get install -y python3-flask",
       "sudo python3 app.py",
     ]
   }
